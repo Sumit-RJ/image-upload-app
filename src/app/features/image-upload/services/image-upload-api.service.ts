@@ -9,16 +9,16 @@
  *  - Typed response mapped to UploadResponse.
  */
 
-import { Injectable, inject }                               from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import {
   HttpClient,
   HttpEvent,
   HttpEventType,
   HttpRequest,
   HttpResponse,
-}                                                           from '@angular/common/http';
-import { Observable, throwError, timer }                    from 'rxjs';
-import { catchError, filter, map, retry, switchMap }        from 'rxjs/operators';
+} from '@angular/common/http';
+import { Observable, throwError, timer } from 'rxjs';
+import { catchError, filter, map, retry, switchMap } from 'rxjs/operators';
 import { RetryConfig, UploadProgress, UploadResponse, UploadStage } from '../models/image-upload.models';
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -28,8 +28,8 @@ const DEFAULT_RETRY: RetryConfig = {
   delayMs:     1000,   // 1 s → 2 s → 4 s (exponential back-off)
 };
 
-/** Base URL of your .NET 10 Web API. Override via environment config. */
-const API_BASE_URL = '/api';
+/** Base URL of your .NET 10 Web API. Uses proxy in development. */
+const API_BASE_URL = 'https://localhost:7109/api';
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ export class ImageUploadApiService {
     formData.append('thumbnailImage',  thumbnail,  'thumbnail.jpg');
 
     // Build the request with progress reporting enabled.
-    const req = new HttpRequest('POST', `${API_BASE_URL}/images/upload`, formData, {
+    const req = new HttpRequest('POST', `${API_BASE_URL}/ProfilePhoto/upload`, formData, {
       reportProgress: true,
       // Do NOT set Content-Type header manually — the browser must set the
       // multipart boundary automatically.

@@ -9,8 +9,7 @@
 
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { mockUploadInterceptor } from './mock-upload.interceptor';
-import { provideRouter }                                       from '@angular/router';
+import { provideRouter } from '@angular/router';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -22,7 +21,7 @@ export const appConfig: ApplicationConfig = {
     // ── HTTP client with progress event support ────────────────────────────
     // withInterceptorsFromDi() allows token-based interceptors (e.g. auth JWT)
     // to be added later without changing this config.
-    provideHttpClient(withInterceptors([mockUploadInterceptor])),
+    provideHttpClient(),
 
     // ── Router (add your routes here as the app grows) ────────────────────
     provideRouter([

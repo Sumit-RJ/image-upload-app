@@ -65,7 +65,8 @@
               "buildTarget": "image-upload-app:build:production"
             },
             "development": {
-              "buildTarget": "image-upload-app:build:development"
+              "buildTarget": "image-upload-app:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
