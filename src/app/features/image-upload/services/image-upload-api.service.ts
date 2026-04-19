@@ -50,7 +50,7 @@ export class ImageUploadApiService {
    * containing the server response URLs.
    *
    * @param compressed  The ≤ 200 KB JPEG blob (1080 p).
-   * @param thumbnail   The ≤ 30 KB JPEG blob (300 × 300, face-centred).
+   * @param thumbnail   The ≤ 60 KB JPEG blob (300 × 300, face-centred).
    * @param retryCfg    Optional retry configuration override.
    */
   uploadImages(

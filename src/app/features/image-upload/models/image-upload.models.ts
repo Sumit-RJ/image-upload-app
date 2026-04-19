@@ -34,7 +34,7 @@ export interface UploadProgress {
 export interface ProcessedImages {
   /** JPEG blob ≤ 200 KB at 1080p resolution. */
   compressed: Blob;
-  /** JPEG blob ≤ 30 KB at 300 × 300 px, face-centred. */
+  /** JPEG blob ≤ 60 KB at 300 × 300 px, face-centred. */
   thumbnail: Blob;
 }
 
@@ -79,7 +79,7 @@ export interface ThumbnailConfig {
   maxSizeBytes: number;
   /**
    * Padding multiplier applied to the face bounding box before cropping.
-   * 1.4 = 40 % extra space around the detected face (default).
+   * 2.5 = 150 % extra space around the detected face (default).
    */
   facePaddingFactor: number;
 }

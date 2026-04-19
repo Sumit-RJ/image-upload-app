@@ -2,7 +2,7 @@
  * @file image-processor.service.ts
  * @description Handles all client-side image processing:
  *   1. Adaptive JPEG compression → ≤ 200 KB at 1080 p.
- *   2. Face-centred thumbnail generation → ≤ 30 KB at 300 × 300 px.
+ *   2. Face-centred thumbnail generation → ≤ 60 KB at 300 × 300 px.
  *
  * Dependencies (install via npm):
  *   npm install @vladmandic/face-api
@@ -12,11 +12,13 @@
  * Required model files:
  *   - tiny_face_detector_model-weights_manifest.json + shard(s)
  *   - face_landmark_68_tiny_model-weights_manifest.json + shard(s)
+ *
+ * Note: face-api is loaded dynamically to reduce initial bundle size.
  */
 
-import { Injectable, inject }        from '@angular/core';
-import { HttpClient }                 from '@angular/common/http';
-import * as faceapi                   from '@vladmandic/face-api';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import type { Box } from '@vladmandic/face-api';
 import {
   CompressionConfig,
   ProcessedImages,
@@ -37,8 +39,8 @@ const DEFAULT_COMPRESSION: CompressionConfig = {
 const DEFAULT_THUMBNAIL: ThumbnailConfig = {
   widthPx:          300,
   heightPx:         300,
-  maxSizeBytes:     30 * 1024,  // 30 KB
-  facePaddingFactor: 1.5,       // 50 % padding around detected face
+  maxSizeBytes:     60 * 1024,  // 60 KB
+  facePaddingFactor: 2.5,       // 150 % padding around detected face
 };
 
 /** Path (relative to app root) where face-api model JSON files are served. */
@@ -54,6 +56,9 @@ export class ImageProcessorService {
 
   /** Tracks whether the face-api models have already been loaded. */
   private modelsLoaded = false;
+
+  /** Dynamically imported face-api module. */
+  private faceapi: any;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Public API
@@ -156,7 +161,7 @@ export class ImageProcessorService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Thumbnail Pipeline  (300 × 300, face-centred, ≤ 30 KB)
+  // Thumbnail Pipeline  (300 × 300, face-centred, ≤ 60 KB)
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
@@ -167,7 +172,7 @@ export class ImageProcessorService {
    *  2. Run tiny-face-detector on the image.
    *  3. If a face is found, expand its bounding box with padding and crop.
    *  4. If no face is found, fall back to centre-crop.
-   *  5. Apply the same adaptive quality loop used for compression.
+   *  5. Apply two-pass adaptive quality optimization to get close to 60KB limit.
    */
   private async createFaceThumbnail(
     img: HTMLImageElement,
@@ -178,8 +183,8 @@ export class ImageProcessorService {
     await this.ensureFaceApiModels();
 
     // Attempt face detection using the lightweight Tiny Face Detector.
-    const detection = await faceapi
-      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+    const detection = await this.faceapi
+      .detectSingleFace(img, new this.faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks(/* useTinyModel= */ true);
 
     // Compute the crop rectangle (face region or centre fallback).
@@ -190,13 +195,25 @@ export class ImageProcessorService {
     // Render the crop into a 300 × 300 canvas.
     const thumbCanvas = this.cropToSquareCanvas(img, cropRect, cfg.widthPx, cfg.heightPx);
 
-    // Adaptive quality loop to stay under 30 KB.
-    let quality = 0.85;
+    // Adaptive quality loop to get close to 60 KB limit while maintaining quality.
+    let quality = 0.95;
     let blob    = await this.canvasToBlob(thumbCanvas, 'image/jpeg', quality);
 
-    while (blob.size > cfg.maxSizeBytes && quality > 0.05) {
-      quality -= 0.05;
+    // First pass: reduce quality in larger steps until we're under the limit
+    while (blob.size > cfg.maxSizeBytes && quality > 0.10) {
+      quality = Math.max(quality - 0.05, 0.10);
       blob     = await this.canvasToBlob(thumbCanvas, 'image/jpeg', quality);
+    }
+
+    // Second pass: fine-tune with smaller steps to get closer to the limit
+    while (blob.size < cfg.maxSizeBytes * 0.9 && quality < 0.95) {
+      quality = Math.min(quality + 0.02, 0.95);
+      const testBlob = await this.canvasToBlob(thumbCanvas, 'image/jpeg', quality);
+      if (testBlob.size <= cfg.maxSizeBytes) {
+        blob = testBlob;
+      } else {
+        break; // Don't exceed the limit
+      }
     }
 
     console.debug(
@@ -217,9 +234,14 @@ export class ImageProcessorService {
   private async ensureFaceApiModels(): Promise<void> {
     if (this.modelsLoaded) return;
 
+    // Dynamically import face-api
+    if (!this.faceapi) {
+      this.faceapi = await import('@vladmandic/face-api');
+    }
+
     await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODEL_URL),
+      this.faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL),
+      this.faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODEL_URL),
     ]);
 
     this.modelsLoaded = true;
@@ -236,7 +258,7 @@ export class ImageProcessorService {
    */
   private buildFaceCropRect(
     img:           HTMLImageElement,
-    box:           faceapi.Box,
+    box:           Box,
     paddingFactor: number,
   ): DOMRect {
     const padW = (box.width  * (paddingFactor - 1)) / 2;
