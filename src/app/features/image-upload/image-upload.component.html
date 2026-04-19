@@ -1,0 +1,180 @@
+<!--
+  image-upload.component.html
+  ─────────────────────────────────────────────────────────────────────────────
+  Template for the image-upload pipeline component.
+  Structured as four sections:
+    1. Drop Zone  – file selection area
+    2. Previews   – original + compressed + thumbnail side-by-side
+    3. Progress   – animated progress bar with stage label
+    4. Results    – server response URLs after a successful upload
+-->
+
+<section class="upload-card" aria-label="Image Upload">
+
+  <!-- ── 1. Drop Zone ───────────────────────────────────────────────────── -->
+  <div
+    class="drop-zone"
+    [class.drop-zone--active]="isBusy()"
+    (dragover)="onDragOver($event)"
+    (drop)="onDrop($event)"
+    (click)="!isBusy() && openFilePicker()"
+    role="button"
+    tabindex="0"
+    aria-label="Drop image here or click to browse"
+    (keydown.enter)="!isBusy() && openFilePicker()"
+  >
+    <!-- Hidden native file input. Triggered programmatically. -->
+    <input
+      #fileInput
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      aria-hidden="true"
+      class="drop-zone__input"
+      (change)="onFileSelected($event)"
+    />
+
+    @if (!selectedFile()) {
+      <!-- Idle state: show upload icon + instructions -->
+      <div class="drop-zone__prompt">
+        <svg class="drop-zone__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="drop-zone__title">Drop an image or click to browse</p>
+        <p class="drop-zone__subtitle">JPEG · PNG · WebP · max 50 MB</p>
+      </div>
+    } @else {
+      <!-- File selected: show filename + change button -->
+      <div class="drop-zone__selected">
+        <svg class="drop-zone__icon drop-zone__icon--small" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p class="drop-zone__title">{{ selectedFile()!.name }}</p>
+        <p class="drop-zone__subtitle">
+          {{ (selectedFile()!.size / 1024 / 1024).toFixed(2) }} MB
+        </p>
+        @if (!isBusy()) {
+          <button class="btn btn--ghost" type="button" (click)="$event.stopPropagation(); openFilePicker()">
+            Change image
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ── 2. Progress Bar ─────────────────────────────────────────────────── -->
+  @if (progress().stage !== Stage.Idle) {
+    <div class="progress-section" aria-live="polite" aria-label="Upload progress">
+
+      <div class="progress-header">
+        <span class="progress-stage">{{ progress().message }}</span>
+        <span class="progress-pct">{{ progress().percentage }}%</span>
+      </div>
+
+      <!-- Outer track -->
+      <div
+        class="progress-track"
+        role="progressbar"
+        [attr.aria-valuenow]="progress().percentage"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <!-- Animated fill bar -->
+        <div
+          class="progress-fill"
+          [class.progress-fill--error]="progress().stage === Stage.Error"
+          [class.progress-fill--complete]="progress().stage === Stage.Complete"
+          [style.width.%]="progress().percentage"
+        ></div>
+      </div>
+
+      <!-- Stage chips -->
+      <div class="progress-stages">
+        @for (stage of ['Validating','Processing','Uploading','Complete']; track stage) {
+          <span
+            class="stage-chip"
+            [class.stage-chip--done]="isStageComplete(stage)"
+            [class.stage-chip--active]="isStageActive(stage)"
+          >{{ stage }}</span>
+        }
+      </div>
+
+    </div>
+  }
+
+  <!-- ── 3. Error Banner ─────────────────────────────────────────────────── -->
+  @if (errorMessage()) {
+    <div class="alert alert--error" role="alert">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ errorMessage() }}</span>
+      <button class="btn btn--ghost btn--sm" type="button" (click)="reset()">Dismiss</button>
+    </div>
+  }
+
+  <!-- ── 4. Image Previews ────────────────────────────────────────────────── -->
+  @if (previewUrl()) {
+    <div class="previews">
+
+      <!-- Original -->
+      <div class="preview-card">
+        <p class="preview-card__label">Original</p>
+        <img
+          class="preview-card__img"
+          [src]="previewUrl()"
+          alt="Original uploaded image"
+          loading="lazy"
+        />
+        <p class="preview-card__meta">
+          {{ (selectedFile()!.size / 1024).toFixed(0) }} KB ·
+          {{ selectedFile()!.type.split('/')[1].toUpperCase() }}
+        </p>
+      </div>
+
+      <!-- Compressed (1080 p, ≤ 200 KB) -->
+      @if (compressedUrl()) {
+        <div class="preview-card">
+          <p class="preview-card__label">Compressed <span class="badge">≤ 200 KB · 1080p</span></p>
+          <img
+            class="preview-card__img"
+            [src]="compressedUrl()"
+            alt="Compressed image"
+            loading="lazy"
+          />
+        </div>
+      }
+
+      <!-- Thumbnail (300 × 300, face-centred, ≤ 30 KB) -->
+      @if (thumbnailUrl()) {
+        <div class="preview-card preview-card--thumb">
+          <p class="preview-card__label">Thumbnail <span class="badge">≤ 30 KB · 300×300</span></p>
+          <img
+            class="preview-card__img preview-card__img--square"
+            [src]="thumbnailUrl()"
+            alt="Face-centred thumbnail"
+            loading="lazy"
+          />
+        </div>
+      }
+
+    </div>
+  }
+
+  <!-- ── 5. Success Result ────────────────────────────────────────────────── -->
+  @if (isComplete()) {
+    <div class="alert alert--success" role="status">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      <span>Both images uploaded successfully!</span>
+      <button class="btn btn--ghost btn--sm" type="button" (click)="reset()">Upload another</button>
+    </div>
+  }
+
+</section>

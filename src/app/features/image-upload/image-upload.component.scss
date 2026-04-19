@@ -1,0 +1,321 @@
+/**
+ * image-upload.component.scss
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Styles for the image upload pipeline component.
+ * Aesthetic: Clean industrial/utilitarian — crisp borders, sharp corners,
+ * monochrome with a single electric-blue accent.
+ */
+
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+:host {
+  --color-bg:        #0f1117;
+  --color-surface:   #181c26;
+  --color-border:    #2a2f3e;
+  --color-accent:    #3d8bff;
+  --color-accent-glow: rgba(61, 139, 255, 0.20);
+  --color-success:   #22c55e;
+  --color-error:     #ef4444;
+  --color-text:      #e2e8f0;
+  --color-muted:     #64748b;
+
+  --radius:          4px;
+  --radius-lg:       8px;
+  --transition:      200ms ease;
+
+  display: block;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  font-family: 'DM Mono', 'Courier New', monospace;
+  color: var(--color-text);
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+// ─── Upload Card ──────────────────────────────────────────────────────────────
+.upload-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// ─── Drop Zone ────────────────────────────────────────────────────────────────
+.drop-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  padding: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+
+  // Subtle dashed inner border effect
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px dashed var(--color-border);
+    border-radius: calc(var(--radius-lg) - 2px);
+    pointer-events: none;
+    transition: border-color var(--transition);
+  }
+
+  &:hover:not(.drop-zone--active),
+  &:focus-visible {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-glow);
+
+    &::before { border-color: var(--color-accent); }
+  }
+
+  &--active {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &__input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &__prompt,
+  &__selected {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    stroke: var(--color-accent);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    margin-bottom: 0.25rem;
+
+    &--small { width: 32px; height: 32px; }
+  }
+
+  &__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    word-break: break-all;
+  }
+
+  &__subtitle {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    margin: 0;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+// ─── Progress Bar ─────────────────────────────────────────────────────────────
+.progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8rem;
+}
+
+.progress-stage { color: var(--color-muted); }
+.progress-pct   { color: var(--color-accent); font-weight: 700; font-size: 0.9rem; }
+
+.progress-track {
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1c6fff, var(--color-accent));
+  border-radius: 3px;
+  transition: width 400ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  // Shimmer animation while uploading
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+
+  &--error    { background: var(--color-error); animation: none; }
+  &--complete { background: var(--color-success); animation: none; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+// Stage chips row
+.progress-stages {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stage-chip {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  color: var(--color-muted);
+  transition: all var(--transition);
+
+  &--active {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background: var(--color-accent-glow);
+  }
+
+  &--done {
+    border-color: var(--color-success);
+    color: var(--color-success);
+    background: rgba(34, 197, 94, 0.1);
+  }
+}
+
+// ─── Alert Banners ────────────────────────────────────────────────────────────
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+
+  svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  span { flex: 1; }
+
+  &--error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    svg { stroke: var(--color-error); }
+  }
+
+  &--success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    svg { stroke: var(--color-success); }
+  }
+}
+
+// ─── Buttons ──────────────────────────────────────────────────────────────────
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition);
+
+  &:hover { border-color: var(--color-accent); color: var(--color-accent); }
+  &--ghost { background: transparent; }
+  &--sm { padding: 0.25rem 0.6rem; font-size: 0.75rem; }
+}
+
+// ─── Image Previews ───────────────────────────────────────────────────────────
+.previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+
+  &__label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+
+    &--square {
+      aspect-ratio: 1 / 1;
+      max-width: 160px;
+      align-self: center;
+    }
+  }
+
+  &__meta {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    margin: 0;
+  }
+
+  &--thumb { max-width: 220px; }
+}
+
+// ─── Badge ────────────────────────────────────────────────────────────────────
+.badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 1px 5px;
+  border: 1px solid var(--color-accent);
+  border-radius: 2px;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+@media (max-width: 480px) {
+  :host { padding: 1rem 0.75rem; }
+  .previews { grid-template-columns: 1fr; }
+}
