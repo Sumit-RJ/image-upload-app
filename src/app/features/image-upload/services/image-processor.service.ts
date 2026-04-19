@@ -37,10 +37,10 @@ const DEFAULT_COMPRESSION: CompressionConfig = {
 };
 
 const DEFAULT_THUMBNAIL: ThumbnailConfig = {
-  widthPx:          300,
-  heightPx:         300,
+  widthPx:          450,
+  heightPx:         450,
   maxSizeBytes:     60 * 1024,  // 60 KB
-  facePaddingFactor: 2.5,       // 150 % padding around detected face
+  facePaddingFactor: 1.9,       // 150 % padding around detected face
 };
 
 /** Path (relative to app root) where face-api model JSON files are served. */
@@ -113,12 +113,12 @@ export class ImageProcessorService {
     const canvas = this.resizeToCanvas(img, cfg.maxWidthPx, cfg.maxHeightPx);
 
     let quality = cfg.initialQuality;
-    let blob    = await this.canvasToBlob(canvas, 'image/jpeg', quality);
+    let blob    = await this.canvasToBlob(canvas, 'image/webp', quality);
 
     // Adaptive loop: reduce quality until size target is met.
     while (blob.size > cfg.maxSizeBytes && quality > cfg.minQuality) {
       quality = Math.max(quality - cfg.qualityStep, cfg.minQuality);
-      blob    = await this.canvasToBlob(canvas, 'image/jpeg', quality);
+      blob    = await this.canvasToBlob(canvas, 'image/webp', quality);
     }
 
     // Edge case: even minQuality exceeds the limit (extremely large source).
@@ -154,7 +154,7 @@ export class ImageProcessorService {
       const ctx            = scaledCanvas.getContext('2d')!;
       ctx.drawImage(canvas, 0, 0, w, h);
 
-      blob = await this.canvasToBlob(scaledCanvas, 'image/jpeg', cfg.minQuality);
+      blob = await this.canvasToBlob(scaledCanvas, 'image/webp', cfg.minQuality);
     } while (blob!.size > cfg.maxSizeBytes && w > 200);
 
     return blob!;
@@ -197,18 +197,18 @@ export class ImageProcessorService {
 
     // Adaptive quality loop to get close to 60 KB limit while maintaining quality.
     let quality = 0.95;
-    let blob    = await this.canvasToBlob(thumbCanvas, 'image/jpeg', quality);
+    let blob    = await this.canvasToBlob(thumbCanvas, 'image/webp', quality);
 
     // First pass: reduce quality in larger steps until we're under the limit
     while (blob.size > cfg.maxSizeBytes && quality > 0.10) {
       quality = Math.max(quality - 0.05, 0.10);
-      blob     = await this.canvasToBlob(thumbCanvas, 'image/jpeg', quality);
+      blob     = await this.canvasToBlob(thumbCanvas, 'image/webp', quality);
     }
 
     // Second pass: fine-tune with smaller steps to get closer to the limit
     while (blob.size < cfg.maxSizeBytes * 0.9 && quality < 0.95) {
       quality = Math.min(quality + 0.02, 0.95);
-      const testBlob = await this.canvasToBlob(thumbCanvas, 'image/jpeg', quality);
+      const testBlob = await this.canvasToBlob(thumbCanvas, 'image/webp', quality);
       if (testBlob.size <= cfg.maxSizeBytes) {
         blob = testBlob;
       } else {
@@ -298,6 +298,10 @@ export class ImageProcessorService {
   ): HTMLCanvasElement {
     const canvas = this.createCanvas(width, height);
     const ctx    = canvas.getContext('2d')!;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.filter = 'contrast(1.05) saturate(1.05)';
 
     ctx.drawImage(
       img,
